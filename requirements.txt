@@ -1,0 +1,10 @@
+streamlit
+pandas
+plotly
+huggingface_hub
+python-dotenv
+faiss-cpu
+sentence-transformers
+requests
+numpy
+sqlite3
