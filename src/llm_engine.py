@@ -36,21 +36,18 @@ class LLMEngine:
             return None
 
     def _call_hf(self, prompt, max_tokens=1000):
-        # Fallback to HF if Groq fails or is not configured
-        api_url = f"https://api-inference.huggingface.co/models/{self.hf_model}"
-        headers = {"Authorization": f"Bearer {self.hf_token}"}
-        payload = {
-            "inputs": f"[INST] {prompt} [/INST]",
-            "parameters": {"max_new_tokens": max_tokens, "temperature": 0.1}
-        }
+        from huggingface_hub import InferenceClient
         try:
-            response = requests.post(api_url, headers=headers, json=payload, timeout=20)
-            if response.status_code == 200:
-                res_json = response.json()
-                if isinstance(res_json, list) and len(res_json) > 0:
-                    return res_json[0].get("generated_text", "")
-                return str(res_json)
-            return None
+            client = InferenceClient(model="mistralai/Mistral-7B-Instruct-v0.3", token=self.hf_token)
+            response = client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You are an expert Interior Design Consultant. You must respond ONLY with a raw JSON string. Do not include any markdown formatting, preamble, or explanation outside the JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens,
+                temperature=0.1,
+            )
+            return response.choices[0].message.content
         except Exception as e:
             print(f"HF Error: {e}")
             return None
