@@ -7,13 +7,30 @@ load_dotenv()
 APP_NAME = "Interior Design Skill Gap Analyzer"
 DOMAIN_NAME = "Interior Design"
 
+# Helper to get config from env or streamlit secrets
+def get_config(key, default=None):
+    # Try environment variable first
+    val = os.getenv(key)
+    if val:
+        return val
+    
+    # Try streamlit secrets
+    try:
+        import streamlit as st
+        if key in st.secrets:
+            return st.secrets[key]
+    except:
+        pass
+        
+    return default
+
 # API Keys
-HF_TOKEN = os.getenv("HF_TOKEN")
-MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "HuggingFaceH4/zephyr-7b-beta")
+HF_TOKEN = get_config("HF_TOKEN")
+MISTRAL_MODEL = get_config("MISTRAL_MODEL", "HuggingFaceH4/zephyr-7b-beta")
 
 # Groq API Keys (Primary)
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
+GROQ_API_KEY = get_config("GROQ_API_KEY")
+LLM_MODEL = get_config("LLM_MODEL", "llama-3.3-70b-versatile")
 
 # Database
 DB_PATH = "data/sessions.db"
