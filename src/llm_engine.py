@@ -20,7 +20,7 @@ class LLMEngine:
         payload = {
             "model": "llama-3.3-70b-versatile",
             "messages": [
-                {"role": "system", "content": "You are an expert Interior Design Consultant. Always respond with valid JSON only."},
+                {"role": "system", "content": "You are an expert Interior Design Consultant. You must respond ONLY with a raw JSON string. Do not include any markdown formatting, preamble, or explanation outside the JSON."},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.1,
@@ -67,19 +67,32 @@ class LLMEngine:
             return None
             
         try:
-            # Find the JSON block in the response
-            start = content.find('{')
-            end = content.rfind('}') + 1
-            if start == -1 or end == 0:
-                start = content.find('[')
+            # More robust JSON extraction
+            # Try to find the start of a JSON object or array
+            json_start_obj = content.find('{')
+            json_start_arr = content.find('[')
+            
+            # Determine which one comes first and isn't -1
+            if json_start_obj != -1 and (json_start_arr == -1 or json_start_obj < json_start_arr):
+                start = json_start_obj
+                end = content.rfind('}') + 1
+            elif json_start_arr != -1:
+                start = json_start_arr
                 end = content.rfind(']') + 1
+            else:
+                return None
                 
-            if start != -1 and end != 0:
+            if start != -1 and end > start:
                 json_str = content[start:end]
+                # Clean up any potential markdown residue
+                json_str = json_str.strip()
                 return json.loads(json_str)
+            
+            print(f"Failed to find valid JSON bounds in: {content[:100]}...")
             return None
         except Exception as e:
             print(f"JSON Parse Error: {e}")
+            print(f"Raw content was: {content}")
             return None
 
     def analyze_gap(self, task, struggle, context_records):
