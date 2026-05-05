@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from src.config import APP_NAME, SKILL_CATEGORIES, THEME_COLOR, SECONDARY_COLOR, ACCENT_COLOR
+from src.config import APP_NAME, SKILL_CATEGORIES, THEME_COLOR, SECONDARY_COLOR, ACCENT_COLOR, HF_TOKEN
 from src.database import init_db, save_session, get_all_sessions, clear_history
 from src.vector_store import VectorStore
 from src.llm_engine import LLMEngine
