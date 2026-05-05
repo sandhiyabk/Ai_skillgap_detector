@@ -39,25 +39,41 @@ class LLMEngine:
         from huggingface_hub import InferenceClient
         try:
             client = InferenceClient(model=self.hf_model, token=self.hf_token)
-            response = client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": "You are an expert Interior Design Consultant. You must respond ONLY with a raw JSON string. Do not include any markdown formatting, preamble, or explanation outside the JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=max_tokens,
-                temperature=0.1,
-            )
-            return response.choices[0].message.content
+            
+            # Try chat completion first (OpenAI compatible)
+            try:
+                response = client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": "You are an expert Interior Design Consultant. You must respond ONLY with a raw JSON string. Do not include any markdown formatting, preamble, or explanation outside the JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=max_tokens,
+                    temperature=0.1,
+                )
+                return response.choices[0].message.content
+            except Exception as chat_err:
+                print(f"HF Chat API Error, falling back to text_generation: {chat_err}")
+                # Fallback to standard text generation if chat completion is not supported
+                formatted_prompt = f"<s>[INST] You are an expert Interior Design Consultant. Respond ONLY with a raw JSON string.\n\n{prompt} [/INST]"
+                response = client.text_generation(
+                    formatted_prompt,
+                    max_new_tokens=max_tokens,
+                    temperature=0.1,
+                    stop_sequences=["</s>"]
+                )
+                return response
         except Exception as e:
             print(f"HF Error: {e}")
             return None
 
     def _get_json_response(self, prompt):
         content = None
+        # Try Groq first if available
         if self.use_groq:
             content = self._call_groq(prompt)
         
-        if not content and self.hf_token:
+        # Fallback to HF if Groq failed or not configured
+        if (not content or "error" in content.lower()) and self.hf_token:
             content = self._call_hf(prompt)
             
         if not content:
@@ -65,30 +81,44 @@ class LLMEngine:
             
         try:
             # More robust JSON extraction
-            # Try to find the start of a JSON object or array
-            json_start_obj = content.find('{')
-            json_start_arr = content.find('[')
+            # Clean up the content first (sometimes LLMs wrap in markdown code blocks)
+            cleaned_content = content.strip()
+            if cleaned_content.startswith("```json"):
+                cleaned_content = cleaned_content[7:]
+            elif cleaned_content.startswith("```"):
+                cleaned_content = cleaned_content[3:]
+            if cleaned_content.endswith("```"):
+                cleaned_content = cleaned_content[:-3]
+            cleaned_content = cleaned_content.strip()
+
+            # Try to find the first '{' and last '}'
+            start = cleaned_content.find('{')
+            end = cleaned_content.rfind('}') + 1
             
-            # Determine which one comes first and isn't -1
-            if json_start_obj != -1 and (json_start_arr == -1 or json_start_obj < json_start_arr):
-                start = json_start_obj
-                end = content.rfind('}') + 1
-            elif json_start_arr != -1:
-                start = json_start_arr
-                end = content.rfind(']') + 1
+            # Or first '[' and last ']'
+            start_arr = cleaned_content.find('[')
+            end_arr = cleaned_content.rfind(']') + 1
+
+            # Decide which one is more likely to be the root object
+            if start != -1 and (start_arr == -1 or start < start_arr):
+                target_json = cleaned_content[start:end]
+            elif start_arr != -1:
+                target_json = cleaned_content[start_arr:end_arr]
             else:
-                return None
-                
-            if start != -1 and end > start:
-                json_str = content[start:end]
-                # Clean up any potential markdown residue
-                json_str = json_str.strip()
-                return json.loads(json_str)
-            
-            print(f"Failed to find valid JSON bounds in: {content[:100]}...")
-            return None
+                target_json = cleaned_content
+
+            return json.loads(target_json)
         except Exception as e:
             print(f"JSON Parse Error: {e}")
+            # If it's still failing, try one last attempt by removing all non-JSON-like prefix/suffix
+            try:
+                import re
+                # Find something that looks like a JSON object or array
+                match = re.search(r'(\{.*\}|\[.*\])', content, re.DOTALL)
+                if match:
+                    return json.loads(match.group(1))
+            except:
+                pass
             print(f"Raw content was: {content}")
             return None
 

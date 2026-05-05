@@ -1,7 +1,7 @@
 streamlit
 pandas
 plotly
-huggingface_hub
+huggingface_hub>=0.20.0
 python-dotenv
 faiss-cpu
 sentence-transformers
