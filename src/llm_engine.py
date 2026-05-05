@@ -1,7 +1,7 @@
 import json
 import requests
 import os
-from src.config import HF_TOKEN, GROQ_API_KEY, LLM_MODEL
+from src.config import HF_TOKEN, GROQ_API_KEY, LLM_MODEL, MISTRAL_MODEL
 
 class LLMEngine:
     def __init__(self):
@@ -14,7 +14,7 @@ class LLMEngine:
         }
         
         self.hf_token = HF_TOKEN
-        self.hf_model = "mistralai/Mistral-7B-Instruct-v0.3"
+        self.hf_model = MISTRAL_MODEL or "HuggingFaceH4/zephyr-7b-beta"
 
     def _call_groq(self, prompt, max_tokens=1000):
         payload = {
@@ -38,7 +38,7 @@ class LLMEngine:
     def _call_hf(self, prompt, max_tokens=1000):
         from huggingface_hub import InferenceClient
         try:
-            client = InferenceClient(model="mistralai/Mistral-7B-Instruct-v0.3", token=self.hf_token)
+            client = InferenceClient(model=self.hf_model, token=self.hf_token)
             response = client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": "You are an expert Interior Design Consultant. You must respond ONLY with a raw JSON string. Do not include any markdown formatting, preamble, or explanation outside the JSON."},
