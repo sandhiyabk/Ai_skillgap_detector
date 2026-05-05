@@ -9,7 +9,11 @@ DOMAIN_NAME = "Interior Design"
 
 # API Keys
 HF_TOKEN = os.getenv("HF_TOKEN")
-MISTRAL_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
+MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "HuggingFaceH4/zephyr-7b-beta")
+
+# Groq API Keys (Primary)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
 
 # Database
 DB_PATH = "data/sessions.db"

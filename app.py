@@ -66,6 +66,15 @@ with st.sidebar:
     st.info(f"Welcome back, {user_name}!")
     
     st.divider()
+    st.subheader("System Connectivity")
+    if llm_engine.use_groq:
+        st.success("✅ Primary Engine: Groq (Connected)")
+    elif HF_TOKEN:
+        st.warning("⚠️ Using Fallback: Hugging Face")
+    else:
+        st.error("❌ No AI Engine Connected")
+    
+    st.divider()
     st.subheader("Session Controls")
     if st.button("Clear Session History"):
         clear_history()
